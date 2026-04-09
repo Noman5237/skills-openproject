@@ -1,0 +1,76 @@
+{
+  "skill_name": "workdays",
+  "evals": [
+    {
+      "id": 0,
+      "name": "due-date-holiday",
+      "prompt": "I need to estimate when a backend task will be done. It starts on April 9, 2026, and the estimate is 24 hours of work. When is the due date? (We follow Bangladesh work week and official public holidays.)",
+      "expected_output": "Due date of 2026-04-15, accounting for the Pahela Baishakh holiday on April 14",
+      "assertions": [
+        {
+          "name": "correct_due_date",
+          "text": "The answer states the due date is 2026-04-15 (April 15, 2026)"
+        },
+        {
+          "name": "mentions_pahela_baishakh",
+          "text": "The answer mentions Pahela Baishakh (or Bengali New Year / Bangla New Year) as a holiday on April 14 that affects the schedule"
+        },
+        {
+          "name": "uses_script",
+          "text": "The answer shows output from the dates.py script (JSON with start/due/workingDays fields)"
+        },
+        {
+          "name": "cache_check_performed",
+          "text": "The agent checked holiday cache status before running the calculation (ran cache-status command or checked for .holiday-cache/2026.json)"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "sequential-schedule",
+      "prompt": "Schedule three tasks for a single developer starting April 13, 2026 in Bangladesh. Task 1: Set up Redis — 16 hours. Task 2: Configure load balancer — 8 hours. Task 3: Deploy monitoring stack — 24 hours. Give me a start and due date for each.",
+      "expected_output": "Task 1: Apr 13 → Apr 16 (skips Apr 14 holiday), Task 2: Apr 16 → Apr 19, Task 3: Apr 19 → Apr 22",
+      "assertions": [
+        {
+          "name": "task1_due_apr16",
+          "text": "Task 1 (Redis / 16h) has a due date of 2026-04-16 (April 16)"
+        },
+        {
+          "name": "task2_due_apr19",
+          "text": "Task 2 (load balancer / 8h) has a due date of 2026-04-19 (April 19)"
+        },
+        {
+          "name": "task3_due_apr22",
+          "text": "Task 3 (monitoring / 24h) has a due date of 2026-04-22 (April 22)"
+        },
+        {
+          "name": "holiday_skipped",
+          "text": "The answer explains that April 14 (Pahela Baishakh) is a public holiday and affects Task 1's schedule"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "count-remaining-april",
+      "prompt": "How many working days are left in April 2026, starting from today (April 8, 2026)? We work Sunday through Thursday in Bangladesh.",
+      "expected_output": "16 working days remaining (Apr 8–30), deducting Pahela Baishakh on Apr 14",
+      "assertions": [
+        {
+          "name": "correct_count_16",
+          "text": "The answer states 16 working days"
+        },
+        {
+          "name": "mentions_holiday_deduction",
+          "text": "The answer mentions that April 14 (Pahela Baishakh / Bengali New Year) is a public holiday excluded from the count"
+        },
+        {
+          "name": "correct_date_range",
+          "text": "The calculation covers April 8 through April 30, 2026"
+        }
+      ],
+      "files": []
+    }
+  ]
+}

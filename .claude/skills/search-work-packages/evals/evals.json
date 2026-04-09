@@ -1,0 +1,23 @@
+{
+  "skill_name": "search-work-packages",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find all In Progress and On Hold tasks assigned to Noman. Show me what he's currently working on.",
+      "expected_output": "Claude resolves 'Noman' to user ID 64 from memory, maps 'In Progress'→7 and 'On Hold'→13 and 'Task'→1 from memory, runs the script with --assignee 64 --status 7,13 --type 1, and presents a table grouped by project.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Show me all Epics and Features that are due before May 31, 2026 and haven't started yet (no start date, or start date in the future). Search across all projects.",
+      "expected_output": "Claude maps Epic→5 and Feature→4 from memory, runs with --type 5,4 --due-to 2026-05-31, presents results grouped by project with ⚠️ flags on items with missing start dates.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Search for work package #57943 and also show me its child tasks.",
+      "expected_output": "Claude runs the script with --id 57943 --with-children, and presents the parent work package with its children indented under it.",
+      "files": []
+    }
+  ]
+}

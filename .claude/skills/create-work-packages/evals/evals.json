@@ -1,0 +1,23 @@
+{
+  "skill_name": "create-work-packages",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a single task in my project. The task is called 'Write unit tests for login module', assigned to Noman, estimated 4 hours. Ask me which project if you need to.",
+      "expected_output": "Claude asks for or identifies the project, checks custom fields, creates the task via the script, and shows the created work package ID with a link.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to set up this feature breakdown in our project:\n\nFeature: Payment Gateway Integration\n  User Story: As a user I can pay with card\n    Task: Integrate Stripe SDK (8h)\n    Task: Add payment form UI (6h)\n    Task: Write payment tests (4h)\n  User Story: As a user I can see payment history\n    Task: Build payment history API (6h)\n    Task: Build payment history UI (8h)\n\nPlease create all of these. Ask me about the project and any required fields.",
+      "expected_output": "Claude identifies the project, fetches/checks schema for Feature, User Story, and Task types, collects any required custom field values, creates 7 work packages in the right hierarchy (Feature → 2 User Stories → tasks), and shows a hierarchical summary with IDs.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Set up a full epic for our Q2 sprint. I want:\n\nEpic: Q2 User Management\n  Feature: Authentication overhaul\n    Task: Migrate to OAuth2\n    Task: Add MFA support\n  Feature: User profile redesign\n    Task: New profile page UI\n    Task: Profile settings API\n\nProject is 'fintech-core'. Assign everything to me (Noman). Start date April 15, due May 30.",
+      "expected_output": "Claude looks up 'fintech-core' project ID, checks/fetches custom field schema for Epic/Feature/Task, prompts for required custom field values, creates 7 work packages with proper hierarchy and dates assigned to Noman (user ID 64), and presents a hierarchical summary.",
+      "files": []
+    }
+  ]
+}

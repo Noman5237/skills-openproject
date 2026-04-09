@@ -1,0 +1,5 @@
+.env
+__pycache__
+settings.local.json
+.memory/*
+!.memory/index.md
