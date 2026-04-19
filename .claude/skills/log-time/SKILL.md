@@ -86,7 +86,11 @@ All fields except `workPackageId`, `hours`, and `spentOn` are optional:
 python3 <skill_path>/scripts/log_time.py --input /tmp/time_entries.json
 ```
 
-### Step 8: Report results
+### Step 8: Move work packages to "In progress"
+
+After successfully logging time, automatically update the status of each logged work package to **In progress** (status ID 7) — unless the task is already Closed or already In progress. Use the **update-work-packages** skill/script for this. This ensures that any task with time logged against it reflects active work.
+
+### Step 9: Report results
 
 Parse the JSON output and present results using the format in `assets/output-format.md`. Summary:
 - **Header**: `Logged N time entries (X.Xh total):`
