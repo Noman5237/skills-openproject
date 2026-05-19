@@ -2,8 +2,8 @@
 """Update OpenProject work packages from a JSON input file.
 
 Reads an array of update objects, fetches the current lockVersion for each,
-then PATCHes only the fields specified. Supports all standard fields and
-project-specific custom fields.
+then PATCHes only the fields specified. Supports all standard fields,
+project-specific custom fields, and work package relations (dependencies).
 
 Usage:
     python3 update_work_packages.py --input <updates.json>
@@ -13,6 +13,7 @@ Input JSON format (array of update objects):
         {
             "id": 59484,                          (required)
             "subject": "New title",               (optional)
+            "description": "Markdown text",       (optional)
             "startDate": "2026-04-10",            (optional)
             "dueDate": "2026-04-30",              (optional)
             "estimatedHours": 8,                  (optional, numeric)
@@ -21,12 +22,19 @@ Input JSON format (array of update objects):
             "statusId": 7,                        (optional)
             "comment": "Plain text comment",      (optional)
             "fields": { "customField1": "OPS-012" },           (optional)
-            "links": { "customField3": "/api/v3/custom_options/1" }  (optional)
+            "links": { "customField3": "/api/v3/custom_options/1" },  (optional)
+            "relations": [                         (optional)
+                {"type": "blocked_by", "targetId": 60352},
+                {"type": "blocks",     "targetId": 12345},
+                {"type": "relates",    "targetId": 99999}
+            ]
         }
     ]
 
-A work package can have ONLY a comment (no field changes) — useful for
-asking questions or leaving notes without modifying the item.
+Relation types: blocks, blocked_by, relates, precedes, follows,
+                duplicates, duplicated_by
+
+A work package can have ONLY a comment or relations (no field changes).
 
 Output JSON (stdout):
     {
@@ -41,7 +49,7 @@ Output JSON (stdout):
                 "work": "4h",
                 "status": "In progress",
                 "link": "http://...",
-                "changed_fields": ["assignee", "status"]
+                "changed_fields": ["assignee", "status", "relation:blocked_by:#60352"]
             }
         ],
         "total": 1,
@@ -102,6 +110,51 @@ def post_comment(wp_id, comment_text):
         raise RuntimeError(f"HTTP {e.code}: {body}")
 
 
+# Maps user-friendly relation type names to OpenProject API type strings.
+_RELATION_TYPE_MAP = {
+    "blocks":        "blocks",
+    "blocked_by":    "blocked",
+    "blocked":       "blocked",
+    "relates":       "relates",
+    "precedes":      "precedes",
+    "follows":       "follows",
+    "duplicates":    "duplicates",
+    "duplicated_by": "duplicated",
+    "duplicated":    "duplicated",
+}
+
+
+def post_relation(wp_id, relation_type, target_id):
+    """Create a relation from wp_id to target_id via the Relations API.
+
+    Returns the normalised relation type string as reported by the API.
+    Raises RuntimeError on failure.
+    """
+    api_type = _RELATION_TYPE_MAP.get(relation_type)
+    if api_type is None:
+        raise RuntimeError(
+            f"Unknown relation type '{relation_type}'. "
+            f"Valid types: {', '.join(_RELATION_TYPE_MAP)}"
+        )
+    url = f"{BASE_URL}/work_packages/{wp_id}/relations"
+    payload = json.dumps({
+        "_type": "Relation",
+        "type": api_type,
+        "_links": {
+            "from": {"href": f"/api/v3/work_packages/{wp_id}"},
+            "to":   {"href": f"/api/v3/work_packages/{target_id}"},
+        },
+    }).encode("utf-8")
+    req = urllib.request.Request(url, data=payload, headers=_headers, method="POST")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+            return data.get("type", api_type)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {e.code}: {body}")
+
+
 # ---------------------------------------------------------------------------
 # Duration helpers
 # ---------------------------------------------------------------------------
@@ -138,6 +191,10 @@ def build_patch_body(item, lock_version):
         body["subject"] = item["subject"]
         changed.append("subject")
 
+    if "description" in item:
+        body["description"] = {"format": "markdown", "raw": item["description"]}
+        changed.append("description")
+
     if "startDate" in item:
         body["startDate"] = item["startDate"]
         changed.append("startDate")
@@ -168,6 +225,10 @@ def build_patch_body(item, lock_version):
         else:
             body["_links"]["parent"] = {"href": f"/api/v3/work_packages/{pid}"}
         changed.append("parent")
+
+    if "projectId" in item:
+        body["_links"]["project"] = {"href": f"/api/v3/projects/{item['projectId']}"}
+        changed.append("project")
 
     if "statusId" in item:
         body["_links"]["status"] = {"href": f"/api/v3/statuses/{item['statusId']}"}
@@ -232,8 +293,22 @@ def main():
             errors.append({"id": wp_id, "error": "Could not read lockVersion from WP"})
             continue
 
-        # Build and apply PATCH (if there are field changes)
+        # Ensure there is something to do
         comment_text = item.get("comment")
+        has_work = (
+            comment_text
+            or item.get("relations")
+            or any(k in item for k in ("subject", "description", "startDate", "dueDate",
+                                       "estimatedHours", "assigneeId", "responsibleId",
+                                       "parentId", "statusId"))
+            or item.get("fields")
+            or item.get("links")
+        )
+        if not has_work:
+            errors.append({"id": wp_id, "error": "No fields to update and no comment or relations to post"})
+            continue
+
+        # Build and apply PATCH (if there are field changes)
         body, changed = build_patch_body(item, lock_version)
 
         if changed:
@@ -254,8 +329,21 @@ def main():
             except RuntimeError as e:
                 errors.append({"id": wp_id, "error": f"Updated fields OK but comment failed: {e}"})
 
+        # Create relations if provided
+        for rel in item.get("relations", []):
+            rel_type = rel.get("type")
+            target_id = rel.get("targetId")
+            if not rel_type or not target_id:
+                errors.append({"id": wp_id, "error": f"Relation missing 'type' or 'targetId': {rel}"})
+                continue
+            try:
+                actual_type = post_relation(wp_id, rel_type, target_id)
+                changed.append(f"relation:{rel_type}:#{target_id}")
+            except RuntimeError as e:
+                errors.append({"id": wp_id, "error": f"Relation ({rel_type} → #{target_id}) failed: {e}"})
+
         if not changed:
-            errors.append({"id": wp_id, "error": "No fields to update and no comment to post"})
+            errors.append({"id": wp_id, "error": "Nothing was updated (all changes failed or were empty)"})
             continue
 
         links = result.get("_links", {})

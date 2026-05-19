@@ -201,7 +201,8 @@ def main():
     errors = []
 
     for item in items:
-        result = create_item_recursive(item, project_id, None, errors)
+        top_level_parent = item.pop("parentId", None)
+        result = create_item_recursive(item, project_id, top_level_parent, errors)
         if result is not None:
             created.append(result)
 

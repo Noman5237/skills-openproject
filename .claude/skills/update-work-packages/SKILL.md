@@ -88,6 +88,7 @@ Write a file at `/tmp/wp_updates.json`. Include only the fields being changed â€
 |-------|------|---------|
 | `id` | integer | Work package ID (required) |
 | `subject` | string | Subject/name |
+| `description` | string | Description body (rendered as markdown) |
 | `startDate` | `YYYY-MM-DD` | Start date |
 | `dueDate` | `YYYY-MM-DD` | Due/finish date |
 | `estimatedHours` | number | Estimated work (converted to `PT{H}H{M}M`) |
@@ -97,6 +98,25 @@ Write a file at `/tmp/wp_updates.json`. Include only the fields being changed â€
 | `comment` | string | Posted as an activity comment on the WP (plain text or markdown) |
 | `fields` | object | Plain-value custom fields (text, integer, float) |
 | `links` | object | List-type custom fields â†’ `{fieldKey: "/api/v3/custom_options/{id}"}` |
+| `relations` | array | Create relations (dependencies) to other work packages â€” see below |
+
+**Relation format** (each entry in `relations`):
+
+```json
+{"type": "blocked_by", "targetId": 60352}
+```
+
+| `type` value | Meaning |
+|---|---|
+| `blocks` | this WP blocks the target |
+| `blocked_by` | this WP is blocked by the target |
+| `relates` | this WP relates to the target |
+| `precedes` | this WP precedes the target |
+| `follows` | this WP follows the target |
+| `duplicates` | this WP duplicates the target |
+| `duplicated_by` | this WP is duplicated by the target |
+
+Relations appear in `changed_fields` as `relation:blocked_by:#60352`.
 
 ### Step 6: Run the script
 
